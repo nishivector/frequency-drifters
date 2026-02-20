@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Frequency Drifters</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -10,6 +10,7 @@
             overflow: hidden; 
             background: #0a0a1a;
             font-family: 'Orbitron', 'Segoe UI', sans-serif;
+            touch-action: none;
         }
         canvas { display: block; }
         #ui {
@@ -94,6 +95,8 @@
             color: #00d4ff;
             text-shadow: 0 0 30px #00d4ff;
             margin-bottom: 20px;
+            text-align: center;
+            padding: 0 20px;
         }
         #start-overlay p {
             font-size: 24px;
@@ -116,12 +119,84 @@
             transition: opacity 0.2s;
         }
         .drift-indicator.active { opacity: 1; }
+        
+        /* Touch controls */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 0 20px;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 150;
+            pointer-events: auto;
+        }
+        
+        .touch-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.3);
+            border: 3px solid #00d4ff;
+            color: #00d4ff;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(0, 212, 255, 0.6);
+            transform: scale(0.95);
+        }
+        
+        .touch-center {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .touch-btn.drift {
+            background: rgba(255, 51, 102, 0.3);
+            border-color: #ff3366;
+            color: #ff3366;
+        }
+        
+        .touch-btn.drift:active, .touch-btn.drift.active {
+            background: rgba(255, 51, 102, 0.6);
+        }
+        
+        @media (max-width: 768px) {
+            #start-overlay h1 {
+                font-size: 36px;
+            }
+            #score {
+                font-size: 32px;
+            }
+            #combo {
+                font-size: 18px;
+            }
+            #speed-container {
+                width: 120px;
+                bottom: 120px;
+            }
+            .touch-controls {
+                display: flex;
+            }
+            #controls {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="start-overlay">
         <h1>FREQUENCY DRIFTERS</h1>
-        <p>Click to Start</p>
+        <p>Tap to Start</p>
     </div>
     <div id="ui">
         <div id="score-container">
@@ -136,6 +211,18 @@
         </div>
         <div id="controls">WASD or Arrows to move • SPACE to drift</div>
         <div class="drift-indicator" id="drift-indicator">DRIFT!</div>
+    </div>
+    
+    <!-- Touch controls -->
+    <div class="touch-controls">
+        <div class="touch-center">
+            <div class="touch-btn" id="btn-left">◀</div>
+            <div class="touch-btn" id="btn-right">▶</div>
+        </div>
+        <div class="touch-center">
+            <div class="touch-btn" id="btn-thrust">▲</div>
+            <div class="touch-btn drift" id="btn-drift">DRIFT</div>
+        </div>
     </div>
 
     <script type="importmap">
@@ -440,12 +527,40 @@
             }
         }
 
-        // Input handling
+        // Keyboard input handling
         window.addEventListener('keydown', (e) => {
             keys[e.code] = true;
             if (e.code === 'Space') e.preventDefault();
         });
         window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // Touch input handling
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const btnThrust = document.getElementById('btn-thrust');
+        const btnDrift = document.getElementById('btn-drift');
+
+        function addTouchHandler(btn, key) {
+            const activate = (e) => {
+                e.preventDefault();
+                keys[key] = true;
+                btn.classList.add('active');
+            };
+            const deactivate = (e) => {
+                e.preventDefault();
+                keys[key] = false;
+                btn.classList.remove('active');
+            };
+            
+            btn.addEventListener('touchstart', activate, { passive: false });
+            btn.addEventListener('touchend', deactivate, { passive: false });
+            btn.addEventListener('touchcancel', deactivate, { passive: false });
+        }
+
+        addTouchHandler(btnLeft, 'KeyA');
+        addTouchHandler(btnRight, 'KeyD');
+        addTouchHandler(btnThrust, 'KeyW');
+        addTouchHandler(btnDrift, 'Space');
 
         // Start game
         document.getElementById('start-overlay').addEventListener('click', async () => {
