@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FREQUENCY DRIFTERS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        #game-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; }
+        
+        #ui {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-box {
+            background: rgba(0, 20, 40, 0.7);
+            border: 1px solid #0af;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+        
+        .stat-label { font-size: 10px; color: #48a; letter-spacing: 2px; }
+        .stat-value { font-size: 20px; font-weight: 700; color: #0af; text-shadow: 0 0 10px #0af; }
+        .stat-value.score { color: #f0a; }
+        
+        #timer-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        #timer { font-size: 36px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #0af; }
+        
+        #notes-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .note-orb {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+        
+        .note-orb.collected { opacity: 1; box-shadow: 0 0 15px currentColor; }
+        
+        #combo-display {
+            position: absolute;
+            top: 50%;
+            right: 50px;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: #fa0;
+            text-shadow: 0 0 20px #fa0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        #combo-display.show { opacity: 1; }
+        
+        #health-bar {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 20px;
+            background: rgba(0, 20, 40, 0.7);
+            border: 1px solid #f44;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        #health-fill { height: 100%; background: linear-gradient(90deg, #f44, #f88); transition: width 0.3s; }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: 900;
+            color: #0af;
+            text-shadow: 0 0 30px #0af;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        #message.show { opacity: 1; }
+        
+        #menu {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(ellipse at center, #0a0a20 0%, #000 100%);
+            z-index: 20;
+            pointer-events: auto;
+        }
+        
+        #menu.hidden { display: none; }
+        
+        #menu h1 {
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            color: #0af;
+            text-shadow: 0 0 30px #0af, 0 0 60px #06f;
+            margin-bottom: 10px;
+        }
+        
+        #menu .subtitle { font-size: 16px; color: #48a; letter-spacing: 4px; margin-bottom: 40px; }
+        
+        .menu-btn {
+            padding: 15px 40px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            background: transparent;
+            border: 2px solid #0af;
+            color: #0af;
+            cursor: pointer;
+            letter-spacing: 3px;
+            transition: all 0.3s;
+            margin: 10px;
+        }
+        
+        .menu-btn:hover { background: #0af; color: #000; box-shadow: 0 0 30px #0af; }
+        
+        #finish-screen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 30, 50, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 25;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s;
+        }
+        
+        #finish-screen.show { opacity: 1; pointer-events: auto; }
+        #finish-screen h1 { font-size: 48px; color: #0ff; text-shadow: 0 0 30px #0ff; margin-bottom: 30px; }
+        
+        .score-row { display: flex; justify-content: space-between; width: 300px; margin: 10px 0; font-size: 18px; }
+        .score-row .label { color: #48a; }
+        .score-row .value { color: #fff; font-weight: 700; }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #345;
+            text-align: center;
+        }
+        
+        #checkpoint-display {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: #4a8;
+            text-shadow: 0 0 10px #4a8;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui">
+            <div id="hud">
+                <div class="stat-box">
+                    <div class="stat-label">SCORE</div>
+                    <div class="stat-value score" id="score-display">0</div>
+                </div>
+            </div>
+            
+            <div id="timer-container">
+                <div id="timer">00:00.00</div>
+            </div>
+            
+            <div id="checkpoint-display"></div>
+            
+            <div id="notes-display">
+                <div class="note-orb" data-note="C" style="color: #ff4444;"></div>
+                <div class="note-orb" data-note="D" style="color: #ffaa44;"></div>
+                <div class="note-orb" data-note="E" style="color: #ffff44;"></div>
+                <div class="note-orb" data-note="G" style="color: #44ff44;"></div>
+                <div class="note-orb" data-note="A" style="color: #4444ff;"></div>
+            </div>
+            
+            <div id="combo-display">COMBO x1</div>
+            
+            <div id="health-bar">
+                <div id="health-fill" style="width: 100%;"></div>
+            </div>
+            
+            <div id="message"></div>
+            
+            <div id="controls-hint">WASD / ARROWS - Move | SHIFT - Drift | R - Restart</div>
+        </div>
+        
+        <div id="menu">
+            <h1>FREQUENCY<br>DRIFTERS</h1>
+            <p class="subtitle">ZERO-G MUSICAL RACING</p>
+            <button class="menu-btn" id="start-btn">LAUNCH</button>
+            <p style="color: #345; margin-top: 30px; font-size: 12px;">Collect note orbs | Complete triads | Drift for combos</p>
+        </div>
+        
+        <div id="finish-screen">
+            <h1>FINISH!</h1>
+            <div class="score-row"><span class="label">Time:</span><span class="value" id="final-time">00:00.00</span></div>
+            <div class="score-row"><span class="label">Notes:</span><span class="value" id="final-notes">0</span></div>
+            <div class="score-row"><span class="label">Score:</span><span class="value" id="final-score" style="color: #f0a;">0</span></div>
+            <button class="menu-btn" id="restart-btn" style="margin-top: 30px;">RACE AGAIN</button>
+        </div>
+    </div>
+
+    <!-- Import Map for Three.js r183 -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <!-- Tone.js v15.1.22 -->
+    <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // ============ CONFIG ============
+        const CONFIG = {
+            TRACK_LENGTH: 500,
+            TRACK_WIDTH: 40,
+            PLAYER_SPEED: 40,
+            DRIFT_SPEED: 60,
+            ASTEROID_COUNT: 120,
+            NOTE_COUNT: 25,
+            CHECKPOINTS: [150, 300, 400, 500],
+            HEALTH_MAX: 100
+        };
+
+        const NOTE_COLORS = { C: 0xff4444, D: 0xffaa44, E: 0xffff44, G: 0x44ff44, A: 0x4444ff };
+        const NOTE_FREQS = { C: 'C4', D: 'D4', E: 'E4', G: 'G4', A: 'A4' };
+        const NOTE_TYPES = ['C', 'D', 'E', 'G', 'A'];
+
+        // ============ AUDIO ============
+        let audioReady = false;
+        
+        async function initAudio() {
+            if (audioReady) return;
+            await Tone.start();
+            audioReady = true;
+        }
+
+        let drone = null;
+        function startDrone() {
+            if (!audioReady || drone) return;
+            drone = new Tone.Filter(100, 'lowpass').toDestination();
+            const osc = new Tone.Oscillator(55, 'sine').connect(drone);
+            osc.volume.value = -20;
+            osc.start();
+        }
+        
+        function stopDrone() { if (drone) { drone.dispose(); drone = null; } }
+
+        function playNote(note) {
+            if (!audioReady) return;
+            const synth = new Tone.Synth({ oscillator: { type: 'sine' } }).toDestination();
+            synth.triggerAttackRelease(NOTE_FREQS[note], '8n', Tone.now(), 0.3);
+            setTimeout(() => synth.dispose(), 200);
+        }
+
+        function playCollect() {
+            if (!audioReady) return;
+            const synth = new Tone.MembraneSynth().toDestination();
+            synth.triggerAttackRelease('C5', '16n');
+            setTimeout(() => synth.dispose(), 100);
+        }
+
+        function playTriad() {
+            if (!audioReady) return;
+            const synth = new Tone.PolySynth().toDestination();
+            synth.triggerAttackRelease(['C4', 'E4', 'G4'], '4n');
+            setTimeout(() => synth.dispose(), 500);
+        }
+
+        function playDrift() {
+            if (!audioReady) return;
+            const noise = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.1 } }).toDestination();
+            noise.triggerAttackRelease(0.2);
+        }
+
+        function playCrash() {
+            if (!audioReady) return;
+            const noise = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.3 } }).toDestination();
+            noise.triggerAttackRelease(0.5);
+        }
+
+        function playFinish() {
+            if (!audioReady) return;
+            const synth = new Tone.PolySynth().toDestination();
+            synth.triggerAttackRelease(['C5', 'E5', 'G5', 'A5', 'C6'], '2n');
+            setTimeout(() => synth.dispose(), 2000);
+        }
+
+        function playCheckpoint() {
+            if (!audioReady) return;
+            const synth = new Tone.Synth({ oscillator: { type: 'triangle' } }).toDestination();
+            synth.triggerAttackRelease('G5', '8n');
+            synth.triggerAttackRelease('C6', '8n', '+0.1');
+            setTimeout(() => synth.dispose(), 300);
+        }
+
+        // ============ GAME STATE ============
+        const game = {
+            state: 'menu',
+            time: 0,
+            score: 0,
+            health: CONFIG.HEALTH_MAX,
+            notes: [],
+            triads: 0,
+            combo: 1,
+            comboTimer: 0,
+            checkpoint: 0,
+            driftTime: 0
+        };
+
+        // ============ THREE.JS SETUP ============
+        const container = document.getElementById('game-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000008);
+        scene.fog = new THREE.Fog(0x000008, 30, 150);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.insertBefore(renderer.domElement, container.firstChild);
+
+        // Post-processing
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.4, 0.85));
+
+        // ============ LIGHTING ============
+        scene.add(new THREE.AmbientLight(0x222244, 0.4));
+        const dirLight = new THREE.DirectionalLight(0x4466ff, 0.6);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // ============ TRACK ============
+        function createTrack() {
+            const grid = new THREE.GridHelper(2000, 200, 0x003344, 0x001122);
+            grid.position.y = -2;
+            scene.add(grid);
+            
+            const wallMat = new THREE.MeshBasicMaterial({ color: 0x003355, transparent: true, opacity: 0.3 });
+            
+            for (let z = -CONFIG.TRACK_LENGTH; z < CONFIG.TRACK_LENGTH; z += 20) {
+                const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 2), wallMat);
+                leftWall.position.set(-CONFIG.TRACK_WIDTH / 2 - 5, 0, z);
+                scene.add(leftWall);
+                
+                const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 2), wallMat);
+                rightWall.position.set(CONFIG.TRACK_WIDTH / 2 + 5, 0, z);
+                scene.add(rightWall);
+            }
+            
+            // Finish line
+            const finishMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+            const finish = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.TRACK_WIDTH, 5), finishMat);
+            finish.rotation.x = Math.PI / 2;
+            finish.position.set(0, -1, CONFIG.CHECKPOINTS[3]);
+            scene.add(finish);
+            
+            // Checkpoint gates
+            CONFIG.CHECKPOINTS.forEach((z, i) => {
+                const gateMat = new THREE.MeshBasicMaterial({ color: i === 3 ? 0x00ff88 : 0x00aaff, transparent: true, opacity: 0.4 });
+                for (let x = -15; x <= 15; x += 5) {
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 12, 8), gateMat);
+                    pole.position.set(x, 6, z);
+                    scene.add(pole);
+                }
+            });
+        }
+
+        // ============ PLAYER ============
+        let player = null;
+        let playerVelocity = new THREE.Vector3();
+        let trailParticles = [];
+        
+        function createPlayer() {
+            const group = new THREE.Group();
+            
+            const body = new THREE.Mesh(
+                new THREE.ConeGeometry(0.8, 3, 4),
+                new THREE.MeshStandardMaterial({ color: 0x00aaff, emissive: 0x0066ff, emissiveIntensity: 0.5, metalness: 0.8, roughness: 0.2 })
+            );
+            body.rotation.x = Math.PI / 2;
+            group.add(body);
+            
+            const wings = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 0.1, 1),
+                new THREE.MeshStandardMaterial({ color: 0x00aaff, emissive: 0x0066ff, emissiveIntensity: 0.5 })
+            );
+            wings.position.z = 0.5;
+            group.add(wings);
+            
+            const engine = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0x00ffff })
+            );
+            engine.position.z = 1.5;
+            group.add(engine);
+            
+            const light = new THREE.PointLight(0x00ffff, 1, 20);
+            light.position.z = 2;
+            group.add(light);
+            
+            group.position.set(0, 0, 0);
+            scene.add(group);
+            player = group;
+            playerVelocity.set(0, 0, 10);
+        }
+
+        function updatePlayer(delta) {
+            if (!player) return;
+            
+            let inputX = 0, inputY = 0, boosting = false;
+            
+            if (keys['KeyW'] || keys['ArrowUp']) inputY += 1;
+            if (keys['KeyS'] || keys['ArrowDown']) inputY -= 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) inputX -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) inputX += 1;
+            if (keys['ShiftLeft'] || keys['ShiftRight']) boosting = true;
+            
+            const speed = boosting ? CONFIG.DRIFT_SPEED : CONFIG.PLAYER_SPEED;
+            
+            if (inputX !== 0 || inputY !== 0) {
+                playerVelocity.x += inputX * speed * delta;
+                playerVelocity.y += inputY * speed * delta;
+            }
+            
+            playerVelocity.z += 5 * delta;
+            playerVelocity.multiplyScalar(0.98);
+            
+            const maxSpeed = boosting ? 60 : 40;
+            if (playerVelocity.length() > maxSpeed) playerVelocity.normalize().multiplyScalar(maxSpeed);
+            
+            player.position.add(playerVelocity.clone().multiplyScalar(delta));
+            
+            player.position.x = Math.max(-CONFIG.TRACK_WIDTH / 2 + 2, Math.min(CONFIG.TRACK_WIDTH / 2 - 2, player.position.x));
+            player.position.y = Math.max(-2, Math.min(10, player.position.y));
+            
+            player.rotation.z = -playerVelocity.x * 0.05;
+            player.rotation.x = playerVelocity.y * 0.03;
+            
+            // Drift
+            if (boosting && (inputX !== 0 || inputY !== 0)) {
+                game.driftTime += delta;
+                game.combo = Math.min(10, game.combo + delta * 2);
+                game.comboTimer = 2;
+                
+                if (Math.random() < 0.1) playDrift();
+                
+                const p = new THREE.Mesh(new THREE.SphereGeometry(0.2, 4, 4), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true }));
+                p.position.copy(player.position);
+                p.position.z -= 2;
+                scene.add(p);
+                trailParticles.push({ mesh: p, life: 1 });
+            }
+            
+            if (game.comboTimer > 0) {
+                game.comboTimer -= delta;
+                if (game.comboTimer <= 0) game.combo = 1;
+            }
+            
+            // Camera
+            camera.position.x = player.position.x * 0.7;
+            camera.position.y = player.position.y * 0.5 + 3;
+            camera.position.z = player.position.z - 10;
+            camera.lookAt(player.position.x, player.position.y, player.position.z + 10);
+            
+            // Health regen
+            if (game.health < CONFIG.HEALTH_MAX) game.health = Math.min(CONFIG.HEALTH_MAX, game.health + 2 * delta);
+            
+            // Check checkpoints
+            CONFIG.CHECKPOINTS.forEach((cpZ, i) => {
+                if (player.position.z >= cpZ && i > game.checkpoint) {
+                    game.checkpoint = i;
+                    playCheckpoint();
+                    showMessage(i === 3 ? 'FINISH!' : `CHECKPOINT ${i + 1}`, i === 3 ? '#0f0' : '#4a8');
+                }
+            });
+            
+            if (game.checkpoint >= 3 && game.state === 'racing') finishGame();
+            
+            updateHUD();
+        }
+
+        // ============ ASTEROIDS ============
+        const asteroids = [];
+
+        function createAsteroids() {
+            for (let i = 0; i < CONFIG.ASTEROID_COUNT; i++) {
+                const geo = new THREE.IcosahedronGeometry(1 + Math.random() * 2, 0);
+                const pos = geo.attributes.position;
+                for (let j = 0; j < pos.count; j++) {
+                    pos.setXYZ(j, pos.getX(j) + (Math.random() - 0.5) * 0.5, pos.getY(j) + (Math.random() - 0.5) * 0.5, pos.getZ(j) + (Math.random() - 0.5) * 0.5);
+                }
+                geo.computeVertexNormals();
+                
+                const asteroid = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.9, metalness: 0.3 }));
+                
+                asteroid.position.set(
+                    (Math.random() - 0.5) * CONFIG.TRACK_WIDTH,
+                    Math.random() * 10 - 2,
+                    Math.random() * CONFIG.TRACK_LENGTH
+                );
+                
+                asteroid.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                asteroid.userData.rotSpeed = { x: (Math.random() - 0.5) * 0.5, y: (Math.random() - 0.5) * 0.5, z: (Math.random() - 0.5) * 0.5 };
+                
+                scene.add(asteroid);
+                asteroids.push(asteroid);
+            }
+        }
+
+        function updateAsteroids(delta) {
+            asteroids.forEach(a => {
+                a.rotation.x += a.userData.rotSpeed.x * delta;
+                a.rotation.y += a.userData.rotSpeed.y * delta;
+                a.rotation.z += a.userData.rotSpeed.z * delta;
+                
+                if (player) {
+                    const dist = player.position.distanceTo(a.position);
+                    if (dist < 2.5) {
+                        game.health -= 20;
+                        playCrash();
+                        playerVelocity.add(player.position.clone().sub(a.position).normalize().multiplyScalar(10));
+                        showMessage('COLLISION!', '#f44');
+                        
+                        if (game.health <= 0) respawnPlayer();
+                    }
+                }
+            });
+        }
+
+        function respawnPlayer() {
+            if (!player) return;
+            player.position.set(0, 0, Math.max(0, player.position.z - 30));
+            playerVelocity.set(0, 0, 5);
+            game.health = CONFIG.HEALTH_MAX;
+            game.combo = 1;
+            showMessage('RESPAWN', '#fa0');
+        }
+
+        // ============ NOTE ORBS ============
+        const noteOrbs = [];
+
+        function createNoteOrbs() {
+            noteOrbs.forEach(n => scene.remove(n));
+            noteOrbs.length = 0;
+            
+            for (let i = 0; i < CONFIG.NOTE_COUNT; i++) {
+                const noteType = NOTE_TYPES[Math.floor(Math.random() * NOTE_TYPES.length)];
+                const color = NOTE_COLORS[noteType];
+                
+                const orb = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.8, 16, 16),
+                    new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 })
+                );
+                
+                orb.position.set(
+                    (Math.random() - 0.5) * (CONFIG.TRACK_WIDTH - 5),
+                    Math.random() * 8,
+                    20 + Math.random() * (CONFIG.TRACK_LENGTH - 50)
+                );
+                
+                const glow = new THREE.PointLight(color, 0.5, 8);
+                orb.add(glow);
+                
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.1, 8, 32), new THREE.MeshBasicMaterial({ color: color, transparent: true }));
+                ring.rotation.x = Math.PI / 2;
+                orb.add(ring);
+                
+                orb.userData = { noteType, collected: false, ring };
+                scene.add(orb);
+                noteOrbs.push(orb);
+            }
+        }
+
+        function updateNoteOrbs(delta) {
+            noteOrbs.forEach(orb => {
+                if (orb.userData.collected) return;
+                
+                orb.rotation.y += delta;
+                orb.userData.ring.rotation.z += delta * 2;
+                orb.position.y += Math.sin(Date.now() * 0.002 + orb.position.z) * 0.01;
+                
+                if (player) {
+                    const dist = player.position.distanceTo(orb.position);
+                    if (dist < 2) collectNote(orb);
+                }
+                
+                if (orb.position.z < player.position.z - 30) {
+                    orb.userData.collected = true;
+                    orb.visible = false;
+                }
+            });
+        }
+
+        function collectNote(orb) {
+            if (orb.userData.collected) return;
+            
+            orb.userData.collected = true;
+            orb.visible = false;
+            
+            const noteType = orb.userData.noteType;
+            game.notes.push(noteType);
+            
+            playNote(noteType);
+            playCollect();
+            
+            game.score += Math.floor(100 * game.combo);
+            
+            const noteEl = document.querySelector(`.note-orb[data-note="${noteType}"]`);
+            if (noteEl) noteEl.classList.add('collected');
+            
+            // Triads
+            const counts = { C: 0, D: 0, E: 0, G: 0, A: 0 };
+            game.notes.forEach(n => counts[n]++);
+            
+            if (counts.C >= 1 && counts.E >= 1 && counts.G >= 1) {
+                game.triads++;
+                game.score += 500;
+                playTriad();
+                showMessage('TRIAD!', '#a0f');
+            }
+            
+            showMessage(noteType, NOTE_COLORS[noteType]);
+        }
+
+        // ============ TRAIL ============
+        function updateTrail(delta) {
+            trailParticles.forEach((p, i) => {
+                p.life -= delta * 2;
+                p.mesh.material.opacity = p.life;
+                p.mesh.scale.multiplyScalar(0.98);
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    trailParticles.splice(i, 1);
+                }
+            });
+        }
+
+        // ============ UI ============
+        function showMessage(text, color) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.color = color;
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 800);
+        }
+
+        function updateHUD() {
+            const mins = Math.floor(game.time / 60);
+            const secs = Math.floor(game.time % 60);
+            const ms = Math.floor((game.time % 1) * 100);
+            document.getElementById('timer').textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+            
+            document.getElementById('score-display').textContent = game.score;
+            
+            const comboEl = document.getElementById('combo-display');
+            if (game.combo > 1) {
+                comboEl.textContent = `COMBO x${Math.floor(game.combo)}`;
+                comboEl.classList.add('show');
+            } else {
+                comboEl.classList.remove('show');
+            }
+            
+            document.getElementById('health-fill').style.width = `${game.health}%`;
+            
+            const cpEl = document.getElementById('checkpoint-display');
+            if (game.checkpoint < 3) {
+                cpEl.textContent = `NEXT: ${CONFIG.CHECKPOINTS[game.checkpoint + 1]}m`;
+            } else {
+                cpEl.textContent = '';
+            }
+        }
+
+        // ============ GAME FLOW ============
+        const keys = {};
+
+        document.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'KeyR' && game.state === 'racing') respawnPlayer();
+        });
+
+        document.addEventListener('keyup', e => keys[e.code] = false);
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            await initAudio();
+            startGame();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', startGame);
+
+        function startGame() {
+            game.state = 'countdown';
+            game.time = 0;
+            game.score = 0;
+            game.health = CONFIG.HEALTH_MAX;
+            game.notes = [];
+            game.triads = 0;
+            game.combo = 1;
+            game.comboTimer = 0;
+            game.checkpoint = 0;
+            game.driftTime = 0;
+            
+            asteroids.forEach(a => scene.remove(a));
+            asteroids.length = 0;
+            noteOrbs.forEach(n => scene.remove(n));
+            noteOrbs.length = 0;
+            trailParticles.forEach(p => scene.remove(p.mesh));
+            trailParticles.length = 0;
+            
+            if (player) scene.remove(player);
+            createPlayer();
+            
+            createTrack();
+            createAsteroids();
+            createNoteOrbs();
+            
+            document.querySelectorAll('.note-orb').forEach(el => el.classList.remove('collected'));
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('finish-screen').classList.remove('show');
+            
+            showMessage('3', '#0af');
+            setTimeout(() => showMessage('2', '#0af'), 1000);
+            setTimeout(() => showMessage('1', '#0af'), 2000);
+            setTimeout(() => {
+                game.state = 'racing';
+                showMessage('GO!', '#0f0');
+                startDrone();
+            }, 3000);
+            
+            updateHUD();
+        }
+
+        function finishGame() {
+            game.state = 'finished';
+            playFinish();
+            stopDrone();
+            
+            const mins = Math.floor(game.time / 60);
+            const secs = Math.floor(game.time % 60);
+            const ms = Math.floor((game.time % 1) * 100);
+            
+            document.getElementById('final-time').textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+            document.getElementById('final-notes').textContent = game.notes.length;
+            document.getElementById('final-score').textContent = game.score + game.triads * 500;
+            
+            document.getElementById('finish-screen').classList.add('show');
+        }
+
+        // ============ RESIZE ============
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ============ LOOP ============
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = Math.min(clock.getDelta(), 0.1);
+            
+            if (game.state === 'racing') {
+                game.time += delta;
+                updatePlayer(delta);
+                updateAsteroids(delta);
+                updateNoteOrbs(delta);
+                updateTrail(delta);
+            }
+            
+            composer.render();
+        }
+
+        animate();
+    </script>
+</body>
+</html>
